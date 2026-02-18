@@ -4,58 +4,43 @@ from google import genai
 st.set_page_config(page_title="ESG 顧問助手", page_icon="💰")
 st.title("🚜 務實派 ESG 顧問翻譯助手")
 
-# 1. 建立 Client
 @st.cache_resource
-def setup_ai():
+def get_ready_model():
     if "GEMINI_API_KEY" not in st.secrets:
-        return None, None, "請在 Secrets 中設定 GEMINI_API_KEY"
+        return None, "請先設定 Secrets"
     
     try:
-        # 建立連線
+        # 使用最新 v1 API 版本
         client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"], http_options={'api_version': 'v1'})
         
-        # 動態列出所有支援生成內容的模型
-        # 注意：我們使用最保險的方式獲取模型清單
-        model_list = []
-        for m in client.models.list():
-            # 2026 最新 SDK 屬性檢查
-            model_list.append(m.name)
-        
-        if not model_list:
-            return None, None, "帳號下無可用模型"
-# 修改這一段：優先選擇 1.5-flash，因為它的免費配額最穩定
-        target = next((m for m in model_list if '1.5-flash' in m), 
-                      next((m for m in model_list if '2.0-flash' in m), model_list[0]))
-        
-        # 最終保險：如果自動偵測的名稱還是讓你報錯，請直接在這裡「寫死」模型名稱
-        # target = "models/gemini-1.5-flash"
-        
-        return client, target, "✅ 顧問連線成功"
+        # 2026 最新推薦：直接測試這兩個名稱，這在目前免費通道最容易通
+        for name in ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-exp']:
+            try:
+                # 測試生成
+                client.models.generate_content(model=name, contents="test")
+                return client, name
+            except:
+                continue
+        return None, "找不到可用模型，請確認 API Key 權限"
     except Exception as e:
-        return None, None, f"連線異常：{str(e)}"
+        return None, str(e)
 
-client, model_name, status_msg = setup_ai()
+client, model_name = get_ready_model()
 
-# 2. 顯示狀態
+# 狀態與功能介面
 if client:
-    st.success(f"{status_msg} (使用模型: {model_name})")
-else:
-    st.error(status_msg)
-
-# 3. 顧問功能
-SYSTEM_PROMPT = "你是一位務實的節能減碳顧問。請精準翻譯原文為繁體中文，並針對儲能、節能改善等項目提供綠色貸款與供應鏈競爭力建議。"
-
-source_text = st.text_area("請輸入英文原文：", height=150)
-
-if st.button("🚀 開始分析"):
-    if client and source_text:
+    st.success(f"✅ 顧問已連線 (使用模型: {model_name})")
+    
+    source_text = st.text_area("請輸入英文原文：", height=150)
+    if st.button("🚀 開始分析"):
         with st.spinner("分析中..."):
             try:
                 response = client.models.generate_content(
                     model=model_name,
-                    contents=f"{SYSTEM_PROMPT}\n\n內容：{source_text}"
+                    contents=f"你是一位節能減碳顧問。請精準翻譯為繁體中文，並提供節能改善與融資建議：\n\n{source_text}"
                 )
-                st.subheader("📝 翻譯與建議")
                 st.info(response.text)
             except Exception as e:
-                st.error(f"生成失敗。錯誤細節：{e}")
+                st.error(f"生成失敗：{e}")
+else:
+    st.error(f"❌ 連線失敗：{model_name}")
