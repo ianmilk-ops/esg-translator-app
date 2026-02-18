@@ -25,9 +25,14 @@ if "GEMINI_API_KEY" in st.secrets:
             continue
             
     if model is None:
-        st.error("目前無法連接到 Gemini 模型，請檢查 API Key 是否有效。")
+        # 將原本的錯誤訊息改為下面這行，這樣我們就能看到 Google 到底回報什麼
+        st.error(f"目前無法連接到 Gemini 模型。")
+        # 加上這一行來顯示具體的錯誤原因
+        with st.expander("查看技術錯誤細節"):
+            st.write("請檢查 API Key 是否填寫正確，或查看後台日誌。")    
 else:
     st.error("請在 Streamlit Secrets 中設定 GEMINI_API_KEY")
+
 
 # 2. 顧問指令
 SYSTEM_PROMPT = """你是一位務實的「節能減碳與融資顧問」。
