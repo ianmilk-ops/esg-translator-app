@@ -4,41 +4,56 @@ from google import genai
 st.set_page_config(page_title="ESG 顧問助手", page_icon="💰")
 st.title("🚜 務實派 ESG 顧問翻譯助手")
 
-# 1. 取得 Client
-def get_client():
+# 1. 建立 Client
+@st.cache_resource
+def setup_ai():
     if "GEMINI_API_KEY" not in st.secrets:
-        st.error("❌ 請在 Secrets 中設定 GEMINI_API_KEY")
-        return None
-    return genai.Client(api_key=st.secrets["GEMINI_API_KEY"], http_options={'api_version': 'v1'})
+        return None, None, "請在 Secrets 中設定 GEMINI_API_KEY"
+    
+    try:
+        # 建立連線
+        client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"], http_options={'api_version': 'v1'})
+        
+        # 動態列出所有支援生成內容的模型
+        # 注意：我們使用最保險的方式獲取模型清單
+        model_list = []
+        for m in client.models.list():
+            # 2026 最新 SDK 屬性檢查
+            model_list.append(m.name)
+        
+        if not model_list:
+            return None, None, "帳號下無可用模型"
+            
+        # 優先順序：2.0-flash > 1.5-flash > 第一個可用的
+        target = next((m for m in model_list if '2.0-flash' in m), 
+                      next((m for m in model_list if '1.5-flash' in m), model_list[0]))
+        
+        return client, target, "✅ 顧問連線成功"
+    except Exception as e:
+        return None, None, f"連線異常：{str(e)}"
 
-client = get_client()
+client, model_name, status_msg = setup_ai()
 
-# 2. 模型選擇（萬一 1.5-flash 不行，你可以手動換 2.0-flash 或 pro）
-model_option = st.selectbox(
-    "選擇模型版本：",
-    ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro", "gemini-pro"],
-    index=0
-)
+# 2. 顯示狀態
+if client:
+    st.success(f"{status_msg} (使用模型: {model_name})")
+else:
+    st.error(status_msg)
 
-# 3. 顧問指令
-SYSTEM_PROMPT = """你是一位專業的節能減碳顧問。
-1. 精準翻譯原文為繁體中文。
-2. 若涉及儲能、節能、電力系統，請標註該項目在台灣對接「綠色貸款」或「節能補助」的潛力。"""
+# 3. 顧問功能
+SYSTEM_PROMPT = "你是一位務實的節能減碳顧問。請精準翻譯原文為繁體中文，並針對儲能、節能改善等項目提供綠色貸款與供應鏈競爭力建議。"
 
-source_text = st.text_area("請輸入英文原文：", height=150, placeholder="例如：The ESS deployment enhances grid stability...")
+source_text = st.text_area("請輸入英文原文：", height=150)
 
 if st.button("🚀 開始分析"):
     if client and source_text:
         with st.spinner("分析中..."):
             try:
-                # 執行生成
                 response = client.models.generate_content(
-                    model=model_option,
-                    contents=f"{SYSTEM_PROMPT}\n\n待處理內容：\n{source_text}"
+                    model=model_name,
+                    contents=f"{SYSTEM_PROMPT}\n\n內容：{source_text}"
                 )
                 st.subheader("📝 翻譯與建議")
                 st.info(response.text)
             except Exception as e:
-                st.error(f"分析失敗。請嘗試更換模型版本或檢查金鑰。錯誤細節：{e}")
-
-st.caption("v2026.02.18 | 專為節能顧問打造的行動翻譯工具")
+                st.error(f"生成失敗。錯誤細節：{e}")
