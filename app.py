@@ -5,7 +5,7 @@ import google.generativeai as genai
 # 部署後，請記得在 Streamlit Cloud 後台設定 GEMINI_API_KEY
 if "GEMINI_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('gemini-1.5-flash')
 else:
     st.error("請在 Streamlit Secrets 中設定 GEMINI_API_KEY")
 
