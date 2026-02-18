@@ -23,12 +23,12 @@ def setup_ai():
         
         if not model_list:
             return None, None, "帳號下無可用模型"
-     # 優先選擇 1.5-flash，因為它的免費額度最穩
+# 修改這一段：優先選擇 1.5-flash，因為它的免費配額最穩定
         target = next((m for m in model_list if '1.5-flash' in m), 
-                      next((m for m in model_list if '2.0-flash' in m), model_list[0]))       
-        # 優先順序：2.0-flash > 1.5-flash > 第一個可用的
-        target = next((m for m in model_list if '2.0-flash' in m), 
-                      next((m for m in model_list if '1.5-flash' in m), model_list[0]))
+                      next((m for m in model_list if '2.0-flash' in m), model_list[0]))
+        
+        # 最終保險：如果自動偵測的名稱還是讓你報錯，請直接在這裡「寫死」模型名稱
+        # target = "models/gemini-1.5-flash"
         
         return client, target, "✅ 顧問連線成功"
     except Exception as e:
