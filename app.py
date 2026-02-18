@@ -3,16 +3,22 @@ import google.generativeai as genai
 
 # 1. 安全配置：從 Streamlit Secrets 讀取金鑰
 # 部署後，請記得在 Streamlit Cloud 後台設定 GEMINI_API_KEY
-# --- 修改這部分 ---
+# --- 修正後的初始化段落 ---
 if "GEMINI_API_KEY" in st.secrets:
-    # 強制指定使用 v1 版本，並設定金鑰
-    genai.configure(api_key=st.secrets["GEMINI_API_KEY"], transport='rest') 
-    # 使用完整的模型路徑名稱
-    model = genai.GenerativeModel(model_name='gemini-1.5-flash')
+    # 1. 配置金鑰
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+    
+    # 2. 強制指定模型，若 gemini-1.5-flash 報錯，則改用 gemini-pro 作為備援
+    try:
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        # 測試連線，若這行失敗會跳到 except
+        model.generate_content("test") 
+    except:
+        # 備援方案：使用最穩定的 gemini-pro 名稱
+        model = genai.GenerativeModel('gemini-pro')
 else:
     st.error("請在 Streamlit Secrets 中設定 GEMINI_API_KEY")
-# ------------------
-
+# -------------------------
 
 # 2. 定義「務實派顧問」的指令
 SYSTEM_PROMPT = """
